@@ -19,6 +19,17 @@ VALID_STAGES = [
     "blocked",
 ]
 
+ARCHITECTURE_SECTIONS = [
+    "Goal",
+    "Current state",
+    "Constraints",
+    "Options considered",
+    "Recommended approach",
+    "Migration / rollout",
+    "Test strategy",
+    "Open questions",
+]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -114,6 +125,76 @@ def parse_args() -> argparse.Namespace:
         help="Fail instead of prompting for missing values.",
     )
     task_parser.set_defaults(func=cmd_add_task)
+
+    architecture_parser = subparsers.add_parser(
+        "update-architecture",
+        aliases=["ua"],
+        help="Update one section of the active feature architecture doc.",
+    )
+    architecture_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Target repo path. Defaults to the current directory.",
+    )
+    architecture_parser.add_argument(
+        "--section",
+        choices=ARCHITECTURE_SECTIONS,
+        help="Architecture section to replace.",
+    )
+    architecture_parser.add_argument(
+        "--content",
+        help="Replacement text for the selected section.",
+    )
+    architecture_parser.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="Fail instead of prompting for missing values.",
+    )
+    architecture_parser.set_defaults(func=cmd_update_architecture)
+
+    active_task_parser = subparsers.add_parser(
+        "set-active-task",
+        aliases=["sat"],
+        help="Set the active backlog item in the current feature file.",
+    )
+    active_task_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Target repo path. Defaults to the current directory.",
+    )
+    active_task_parser.add_argument(
+        "--id",
+        dest="task_id",
+        help="Backlog task ID to activate. Prompts if omitted.",
+    )
+    active_task_parser.set_defaults(func=cmd_set_active_task)
+
+    status_parser = subparsers.add_parser(
+        "status",
+        help="Show a concise summary of the current feature state.",
+    )
+    status_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Target repo path. Defaults to the current directory.",
+    )
+    status_parser.set_defaults(func=cmd_status)
+
+    next_prompt_parser = subparsers.add_parser(
+        "next-prompt",
+        aliases=["np"],
+        help="Print the recommended next Codex prompt for the current stage.",
+    )
+    next_prompt_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Target repo path. Defaults to the current directory.",
+    )
+    next_prompt_parser.set_defaults(func=cmd_next_prompt)
 
     show_parser = subparsers.add_parser(
         "show", help="Print the active workflow files for the current feature."
@@ -347,6 +428,58 @@ def render_task(task_id: str, title: str, goal: str, scope: str, non_goals: str,
     )
 
 
+def architecture_path(root: Path, slug: str) -> Path:
+    return root / "docs" / "architecture" / f"{slug}.md"
+
+
+def backlog_path(root: Path, slug: str) -> Path:
+    return root / "docs" / "backlog" / f"{slug}.md"
+
+
+def parse_backlog_tasks(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    tasks: list[dict[str, str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("## "):
+            continue
+        heading = line[3:].strip()
+        if " - " not in heading:
+            continue
+        task_id, title = heading.split(" - ", 1)
+        tasks.append({"id": task_id.strip(), "title": title.strip()})
+    return tasks
+
+
+def replace_markdown_section(path: Path, section_name: str, content: str) -> None:
+    if not path.exists():
+        raise SystemExit(f"Missing architecture file: {path}")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    start = None
+    end = None
+    needle = f"## {section_name}"
+    for index, line in enumerate(lines):
+        if line.strip() == needle:
+            start = index
+            continue
+        if start is not None and line.startswith("## "):
+            end = index
+            break
+    if start is None:
+        raise SystemExit(f"Section not found in {path}: {section_name}")
+    if end is None:
+        end = len(lines)
+    replacement = [needle, content.strip(), ""]
+    updated = lines[:start] + replacement + lines[end:]
+    path.write_text("\n".join(updated).rstrip() + "\n", encoding="utf-8")
+
+
+def choose_task_id(tasks: list[dict[str, str]]) -> str:
+    labels = [f"{task['id']} - {task['title']}" for task in tasks]
+    choice = prompt_choice("Select active task:", labels)
+    return tasks[labels.index(choice)]["id"]
+
+
 def cmd_init(args: argparse.Namespace) -> int:
     root = Path(args.path).resolve()
     docs = root / "docs"
@@ -426,8 +559,8 @@ def cmd_start_feature(args: argparse.Namespace) -> int:
         },
     )
 
-    write_if_allowed(root / "docs" / "architecture" / f"{slug}.md", architecture_template(name, goal), force=False)
-    write_if_allowed(root / "docs" / "backlog" / f"{slug}.md", backlog_template(name), force=False)
+    write_if_allowed(architecture_path(root, slug), architecture_template(name, goal), force=False)
+    write_if_allowed(backlog_path(root, slug), backlog_template(name), force=False)
     print(f"Started feature '{name}' ({slug}) in {root}")
     return 0
 
@@ -468,17 +601,122 @@ def cmd_add_task(args: argparse.Namespace) -> int:
         acceptance = args.acceptance or prompt_multiline("Acceptance criteria")
         tests_required = args.tests or prompt_multiline("Tests required")
 
-    backlog_path = root / "docs" / "backlog" / f"{slug}.md"
-    if not backlog_path.exists():
-        raise SystemExit(f"Missing backlog file: {backlog_path}")
-    existing = backlog_path.read_text(encoding="utf-8").rstrip()
+    backlog_file = backlog_path(root, slug)
+    if not backlog_file.exists():
+        raise SystemExit(f"Missing backlog file: {backlog_file}")
+    existing = backlog_file.read_text(encoding="utf-8").rstrip()
     updated = existing + "\n\n" + render_task(
         task_id, title, goal, scope, non_goals, acceptance, tests_required
     )
-    backlog_path.write_text(updated + "\n", encoding="utf-8")
+    backlog_file.write_text(updated + "\n", encoding="utf-8")
     feature["active_backlog_item"] = task_id
     save_current_feature(root, feature)
-    print(f"Added task {task_id} to {backlog_path.name}")
+    print(f"Added task {task_id} to {backlog_file.name}")
+    return 0
+
+
+def cmd_update_architecture(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    feature = load_current_feature(root)
+    slug = feature.get("slug")
+    if not slug:
+        raise SystemExit("Current feature slug is empty. Run 'start-feature' first.")
+    if args.non_interactive:
+        if not (args.section and args.content is not None):
+            raise SystemExit("--section and --content are required in --non-interactive mode.")
+        section = args.section
+        content = args.content
+    else:
+        section = args.section or prompt_choice(
+            "Select architecture section:",
+            ARCHITECTURE_SECTIONS,
+            default="Recommended approach",
+        )
+        content = args.content if args.content is not None else prompt_multiline(f"{section} content")
+    replace_markdown_section(architecture_path(root, slug), section, content)
+    print(f"Updated architecture section '{section}'.")
+    return 0
+
+
+def cmd_set_active_task(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    feature = load_current_feature(root)
+    slug = feature.get("slug")
+    if not slug:
+        raise SystemExit("Current feature slug is empty. Run 'start-feature' first.")
+    tasks = parse_backlog_tasks(backlog_path(root, slug))
+    if not tasks:
+        raise SystemExit("No backlog tasks found. Add a task first.")
+    task_ids = {task["id"] for task in tasks}
+    task_id = args.task_id or choose_task_id(tasks)
+    if task_id not in task_ids:
+        raise SystemExit(f"Task not found in backlog: {task_id}")
+    feature["active_backlog_item"] = task_id
+    save_current_feature(root, feature)
+    print(f"Active task set to {task_id}")
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    feature = load_current_feature(root)
+    slug = feature.get("slug", "")
+    print(f"Feature: {feature.get('name') or '(unset)'}")
+    print(f"Slug: {slug or '(unset)'}")
+    print(f"Stage: {feature.get('stage') or '(unset)'}")
+    print(f"Branch: {feature.get('current_branch') or '(unset)'}")
+    print(f"Active task: {feature.get('active_backlog_item') or 'none'}")
+    if slug:
+        print(f"Architecture: {architecture_path(root, slug)}")
+        print(f"Backlog: {backlog_path(root, slug)}")
+        tasks = parse_backlog_tasks(backlog_path(root, slug))
+        if tasks:
+            print("Tasks:")
+            for task in tasks:
+                marker = "*" if task["id"] == feature.get("active_backlog_item") else "-"
+                print(f"  {marker} {task['id']}: {task['title']}")
+    return 0
+
+
+def cmd_next_prompt(args: argparse.Namespace) -> int:
+    root = Path(args.path).resolve()
+    feature = load_current_feature(root)
+    slug = feature.get("slug", "")
+    stage = feature.get("stage", "")
+    active_task = feature.get("active_backlog_item", "none")
+    architecture_file = architecture_path(root, slug) if slug else root / "docs" / "architecture"
+    backlog_file = backlog_path(root, slug) if slug else root / "docs" / "backlog"
+
+    if stage in {"discovery", "architecture"}:
+        prompt = (
+            f"Use {current_feature_path(root)} and {architecture_file} as the source of truth. "
+            f"This feature is in {stage} stage. Planning mode only. "
+            "Do not change files. Analyze the current implementation, refine architecture options, "
+            "and update the architecture plan if needed."
+        )
+    elif stage == "approved":
+        prompt = (
+            f"Use {current_feature_path(root)} and {backlog_file} as the source of truth. "
+            "Break the approved architecture into implementation-ready backlog items or refine the existing backlog. "
+            "Do not implement code yet unless explicitly requested."
+        )
+    elif stage in {"execution", "verification"}:
+        prompt = (
+            f"Use {current_feature_path(root)}, {architecture_file}, and {backlog_file} as the source of truth. "
+            f"Implement or verify the active approved backlog item `{active_task}` only. "
+            "Stay within scope, run relevant verification, and summarize assumptions and remaining risks."
+        )
+    elif stage == "done":
+        prompt = (
+            f"Use {current_feature_path(root)} and {backlog_file}. "
+            "Review the completed feature for residual risks, documentation gaps, and follow-up tasks."
+        )
+    else:
+        prompt = (
+            f"Use {current_feature_path(root)} and the feature docs to identify the blocker, "
+            "clarify what is missing, and propose the smallest next step to unblock work."
+        )
+    print(prompt)
     return 0
 
 
@@ -488,8 +726,8 @@ def cmd_show(args: argparse.Namespace) -> int:
     slug = feature.get("slug", "")
     print(current_feature_path(root).read_text(encoding="utf-8").rstrip())
     if slug:
-        architecture = root / "docs" / "architecture" / f"{slug}.md"
-        backlog = root / "docs" / "backlog" / f"{slug}.md"
+        architecture = architecture_path(root, slug)
+        backlog = backlog_path(root, slug)
         print("")
         print(f"Architecture: {architecture}")
         print(f"Backlog: {backlog}")
@@ -502,8 +740,12 @@ def cmd_guide(args: argparse.Namespace) -> int:
         "init repo workflow",
         "start feature",
         "continue current feature",
+        "update architecture",
         "set stage",
+        "set active task",
         "add task",
+        "show status",
+        "print next prompt",
         "show current feature",
     ]
     choice = prompt_choice("Select action:", options)
@@ -528,12 +770,33 @@ def cmd_guide(args: argparse.Namespace) -> int:
         print(f"Stage: {feature.get('stage', '(unset)')}")
         follow_up = prompt_choice(
             "What do you want to do next?",
-            ["show current feature", "set stage", "add task"],
-            default="show current feature",
+            [
+                "show status",
+                "update architecture",
+                "set stage",
+                "set active task",
+                "add task",
+                "print next prompt",
+                "show current feature",
+            ],
+            default="show status",
         )
+        if follow_up == "show status":
+            return cmd_status(argparse.Namespace(path=str(root)))
+        if follow_up == "update architecture":
+            return cmd_update_architecture(
+                argparse.Namespace(
+                    path=str(root),
+                    section=None,
+                    content=None,
+                    non_interactive=False,
+                )
+            )
         if follow_up == "set stage":
             stage = prompt_choice("Select stage:", VALID_STAGES, default=feature.get("stage"))
             return cmd_set_stage(argparse.Namespace(path=str(root), stage=stage))
+        if follow_up == "set active task":
+            return cmd_set_active_task(argparse.Namespace(path=str(root), task_id=None))
         if follow_up == "add task":
             return cmd_add_task(
                 argparse.Namespace(
@@ -548,10 +811,23 @@ def cmd_guide(args: argparse.Namespace) -> int:
                     non_interactive=False,
                 )
             )
+        if follow_up == "print next prompt":
+            return cmd_next_prompt(argparse.Namespace(path=str(root)))
         return cmd_show(argparse.Namespace(path=str(root)))
+    if choice == "update architecture":
+        return cmd_update_architecture(
+            argparse.Namespace(
+                path=str(root),
+                section=None,
+                content=None,
+                non_interactive=False,
+            )
+        )
     if choice == "set stage":
         stage = prompt_choice("Select stage:", VALID_STAGES)
         return cmd_set_stage(argparse.Namespace(path=str(root), stage=stage))
+    if choice == "set active task":
+        return cmd_set_active_task(argparse.Namespace(path=str(root), task_id=None))
     if choice == "add task":
         return cmd_add_task(
             argparse.Namespace(
@@ -566,6 +842,10 @@ def cmd_guide(args: argparse.Namespace) -> int:
                 non_interactive=False,
             )
         )
+    if choice == "show status":
+        return cmd_status(argparse.Namespace(path=str(root)))
+    if choice == "print next prompt":
+        return cmd_next_prompt(argparse.Namespace(path=str(root)))
     return cmd_show(argparse.Namespace(path=str(root)))
 
 

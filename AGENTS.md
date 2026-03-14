@@ -23,6 +23,7 @@ Good additions:
 - reusable prompt patterns
 - branch and verification policies
 - lightweight standards for overnight execution
+- CLI-guided repo state management for stages, architecture, and tasks
 
 Avoid mixing in project-specific implementation details from unrelated apps.
 

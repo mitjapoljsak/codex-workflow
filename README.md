@@ -47,11 +47,27 @@ bin/workflow /path/to/repo
 bin/codex-workflow
 bin/codex-workflow init /path/to/repo
 bin/codex-workflow start-feature /path/to/repo --name "Feature name" --goal "Goal"
+bin/codex-workflow update-architecture /path/to/repo
 bin/codex-workflow add-task /path/to/repo --id B1 --title "Task title" --goal "Goal" --scope "Scope" --non-goals "Out of scope" --acceptance "Acceptance" --tests "Tests"
+bin/codex-workflow set-active-task /path/to/repo --id B1
+bin/codex-workflow status /path/to/repo
+bin/codex-workflow next-prompt /path/to/repo
 bin/codex-workflow guide /path/to/repo
 ```
 
 `workflow` is the short guided entrypoint. It opens the menu directly and is intended to feel like the "magic word" for workflow management.
+
+Recommended flow:
+
+1. `workflow /path/to/repo`
+2. initialize repo workflow once
+3. start a feature
+4. update architecture notes while discussing options with Codex
+5. add backlog tasks
+6. set the active task
+7. use `next-prompt` to generate the correct Codex prompt for the current stage
+
+The idea is that Codex helps you think through the work, while the CLI keeps the repo state organized in files that can be reused later.
 
 ## Suggested next step
 

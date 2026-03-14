@@ -1,6 +1,8 @@
 import argparse
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 from codex_workflow import cli
@@ -82,6 +84,115 @@ class CodexWorkflowCliTestCase(unittest.TestCase):
         self.assertIn("## B2 - HTML body handling", backlog)
         current = cli.load_current_feature(self.root)
         self.assertEqual(current["active_backlog_item"], "B2")
+
+    def test_set_active_task_updates_current_feature(self) -> None:
+        cli.cmd_init(argparse.Namespace(path=str(self.root), mode="overnight", force=False))
+        cli.cmd_start_feature(
+            argparse.Namespace(
+                path=str(self.root),
+                name="HTML Email Support",
+                slug="html-email-support",
+                goal="Support HTML email bodies.",
+                stage="approved",
+                branch="feat/html-email",
+                non_interactive=True,
+            )
+        )
+        cli.cmd_add_task(
+            argparse.Namespace(
+                path=str(self.root),
+                task_id="B1",
+                title="HTML body handling",
+                goal="Support html input.",
+                scope="send path only",
+                non_goals="templates",
+                acceptance="html works",
+                tests="unit tests",
+                non_interactive=True,
+            )
+        )
+        cli.cmd_add_task(
+            argparse.Namespace(
+                path=str(self.root),
+                task_id="B2",
+                title="HTML tests",
+                goal="Add tests.",
+                scope="tests only",
+                non_goals="new UX",
+                acceptance="tests cover html path",
+                tests="unit tests",
+                non_interactive=True,
+            )
+        )
+
+        result = cli.cmd_set_active_task(
+            argparse.Namespace(path=str(self.root), task_id="B1")
+        )
+
+        self.assertEqual(result, 0)
+        current = cli.load_current_feature(self.root)
+        self.assertEqual(current["active_backlog_item"], "B1")
+
+    def test_update_architecture_replaces_selected_section(self) -> None:
+        cli.cmd_init(argparse.Namespace(path=str(self.root), mode="overnight", force=False))
+        cli.cmd_start_feature(
+            argparse.Namespace(
+                path=str(self.root),
+                name="HTML Email Support",
+                slug="html-email-support",
+                goal="Support HTML email bodies.",
+                stage="architecture",
+                branch="main",
+                non_interactive=True,
+            )
+        )
+
+        result = cli.cmd_update_architecture(
+            argparse.Namespace(
+                path=str(self.root),
+                section="Recommended approach",
+                content="Use multipart emails with text fallback.",
+                non_interactive=True,
+            )
+        )
+
+        self.assertEqual(result, 0)
+        architecture = (
+            self.root / "docs" / "architecture" / "html-email-support.md"
+        ).read_text(encoding="utf-8")
+        self.assertIn("## Recommended approach\nUse multipart emails with text fallback.\n", architecture)
+
+    def test_next_prompt_uses_execution_stage_and_active_task(self) -> None:
+        cli.cmd_init(argparse.Namespace(path=str(self.root), mode="overnight", force=False))
+        cli.save_current_feature(
+            self.root,
+            {
+                "name": "Feature",
+                "slug": "feature",
+                "stage": "execution",
+                "goal": "Goal",
+                "constraints": "",
+                "approved_assumptions": "",
+                "current_branch": "feat/feature",
+                "active_backlog_item": "B2",
+                "notes_for_codex": "",
+            },
+        )
+        (self.root / "docs" / "architecture" / "feature.md").write_text(
+            "# Architecture: Feature\n", encoding="utf-8"
+        )
+        (self.root / "docs" / "backlog" / "feature.md").write_text(
+            "# Backlog: Feature\n", encoding="utf-8"
+        )
+
+        buffer = io.StringIO()
+        with redirect_stdout(buffer):
+            result = cli.cmd_next_prompt(argparse.Namespace(path=str(self.root)))
+
+        self.assertEqual(result, 0)
+        output = buffer.getvalue()
+        self.assertIn("active approved backlog item `B2` only", output)
+        self.assertIn(str(self.root / "docs" / "workflow" / "current_feature.md"), output)
 
     def test_set_stage_updates_current_feature(self) -> None:
         cli.cmd_init(argparse.Namespace(path=str(self.root), mode="overnight", force=False))
