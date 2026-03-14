@@ -24,6 +24,7 @@ Good additions:
 - branch and verification policies
 - lightweight standards for overnight execution
 - CLI-guided repo state management for stages, architecture, and tasks
+- wizard flows that help users turn ideas into architecture, backlog, and execution packets
 
 Avoid mixing in project-specific implementation details from unrelated apps.
 

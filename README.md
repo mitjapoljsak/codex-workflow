@@ -46,10 +46,13 @@ bin/workflow
 bin/workflow /path/to/repo
 bin/codex-workflow
 bin/codex-workflow init /path/to/repo
+bin/codex-workflow create-from-idea /path/to/repo --idea "Raw idea" --name "Feature name" --goal "Goal"
 bin/codex-workflow start-feature /path/to/repo --name "Feature name" --goal "Goal"
+bin/codex-workflow refine-architecture /path/to/repo
 bin/codex-workflow update-architecture /path/to/repo
 bin/codex-workflow add-task /path/to/repo --id B1 --title "Task title" --goal "Goal" --scope "Scope" --non-goals "Out of scope" --acceptance "Acceptance" --tests "Tests"
 bin/codex-workflow set-active-task /path/to/repo --id B1
+bin/codex-workflow prepare-overnight /path/to/repo --task-id B1
 bin/codex-workflow status /path/to/repo
 bin/codex-workflow next-prompt /path/to/repo
 bin/codex-workflow guide /path/to/repo
@@ -61,13 +64,25 @@ Recommended flow:
 
 1. `workflow /path/to/repo`
 2. initialize repo workflow once
-3. start a feature
-4. update architecture notes while discussing options with Codex
+3. create a feature from a raw idea or start a feature directly
+4. refine architecture while discussing options with Codex
 5. add backlog tasks
 6. set the active task
-7. use `next-prompt` to generate the correct Codex prompt for the current stage
+7. prepare an overnight execution packet when ready
+8. use `next-prompt` to generate the correct Codex prompt for the current stage
 
 The idea is that Codex helps you think through the work, while the CLI keeps the repo state organized in files that can be reused later.
+
+High-level guided actions:
+
+- `create-from-idea`
+  Starts from a rough product idea and creates the feature packet plus architecture placeholders.
+
+- `refine-architecture`
+  Runs a structured pass over current state, constraints, options, recommendation, test strategy, and open questions.
+
+- `prepare-overnight`
+  Selects a task, suggests a branch name, switches the feature into execution stage, and writes an overnight packet with the recommended Codex prompt.
 
 ## Suggested next step
 
