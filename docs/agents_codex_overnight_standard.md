@@ -73,6 +73,13 @@ End-of-run output:
 Recommended overnight prompt pattern:
 
 `Create a new branch for this task and implement it autonomously there. Do not stop for minor ambiguity; make reasonable decisions and document them at the end. Complete the feature end-to-end, run relevant tests, and leave the branch ready for review. Only stop if blocked by missing credentials, required approvals, destructive actions, or a fundamental architectural contradiction.`
+
+Optional wizard trigger:
+
+- If the user says `workflow`, switch into guided workflow mode.
+- Ask one question at a time.
+- Offer concrete next-step alternatives instead of open-ended planning prompts.
+- Maintain the workflow files for the active feature and task state.
 ```
 
 ## How to use it

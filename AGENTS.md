@@ -10,6 +10,7 @@ It is documentation-first. The main outputs here are:
 - reusable `AGENTS.md` sections
 - planning and execution conventions
 - branch-based autonomous delivery guidance
+- CLI tooling that helps apply the workflow to other repos
 
 ## Scope
 
@@ -31,6 +32,10 @@ Avoid mixing in project-specific implementation details from unrelated apps.
 - [docs/codex_autonomous_workflow.md](/home/mitja/work/codex-workflow/docs/codex_autonomous_workflow.md)
 - [docs/agents_codex_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_standard.md)
 - [docs/agents_codex_overnight_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_overnight_standard.md)
+- [codex_workflow/cli.py](/home/mitja/work/codex-workflow/codex_workflow/cli.py)
+- [bin/codex-workflow](/home/mitja/work/codex-workflow/bin/codex-workflow)
+- [bin/workflow](/home/mitja/work/codex-workflow/bin/workflow)
+- [tests/test_cli.py](/home/mitja/work/codex-workflow/tests/test_cli.py)
 
 ## Editing rules
 
