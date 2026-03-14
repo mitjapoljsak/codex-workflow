@@ -16,13 +16,13 @@ Current scope:
 
 ## Key files
 
-- [docs/codex_autonomous_workflow.md](/home/mitja/work/gdpr/codex-workflow/docs/codex_autonomous_workflow.md)
+- [docs/codex_autonomous_workflow.md](/home/mitja/work/codex-workflow/docs/codex_autonomous_workflow.md)
   Full workflow and rationale.
 
-- [docs/agents_codex_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_standard.md)
+- [docs/agents_codex_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_standard.md)
   Conservative copy-paste `AGENTS.md` section for normal repos.
 
-- [docs/agents_codex_overnight_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_overnight_standard.md)
+- [docs/agents_codex_overnight_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_overnight_standard.md)
   Branch-based autonomous/overnight copy-paste `AGENTS.md` section.
 
 ## Intended usage

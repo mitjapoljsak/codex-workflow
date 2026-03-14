@@ -295,8 +295,8 @@ When working autonomously:
 
 Short reusable version:
 
-- [agents_codex_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_standard.md)
-- [agents_codex_overnight_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_overnight_standard.md)
+- [agents_codex_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_standard.md)
+- [agents_codex_overnight_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_overnight_standard.md)
 
 ## Recommended prompt patterns
 

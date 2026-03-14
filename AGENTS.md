@@ -27,10 +27,10 @@ Avoid mixing in project-specific implementation details from unrelated apps.
 
 ## Important files
 
-- [README.md](/home/mitja/work/gdpr/codex-workflow/README.md)
-- [docs/codex_autonomous_workflow.md](/home/mitja/work/gdpr/codex-workflow/docs/codex_autonomous_workflow.md)
-- [docs/agents_codex_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_standard.md)
-- [docs/agents_codex_overnight_standard.md](/home/mitja/work/gdpr/codex-workflow/docs/agents_codex_overnight_standard.md)
+- [README.md](/home/mitja/work/codex-workflow/README.md)
+- [docs/codex_autonomous_workflow.md](/home/mitja/work/codex-workflow/docs/codex_autonomous_workflow.md)
+- [docs/agents_codex_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_standard.md)
+- [docs/agents_codex_overnight_standard.md](/home/mitja/work/codex-workflow/docs/agents_codex_overnight_standard.md)
 
 ## Editing rules
 
